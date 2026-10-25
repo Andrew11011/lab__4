@@ -19,9 +19,7 @@ const options = program.opts();
 // Перевірка існування файлу через КОЛБЕК
 fs.access(options.input, fs.constants.F_OK, (err) => {
   if (err) {
-    // Якщо файл не знайдено — виводимо точну фразу з методички
     console.error('Cannot find input file');
-    // process.exit(1) завершує програму з ненульовим кодом (помилка)
     process.exit(1);
   }
 
@@ -72,13 +70,28 @@ function startServer() {
         return item;
       });
 
-      // 7. Відправляємо результат
-      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify(result, null, 2));
-    });
-  });
+      // 7. Готуємо текст відповіді
+      const responseJson = JSON.stringify(result, null, 2);
 
+      // Якщо вказали -o — записуємо у файл через КОЛБЕК fs.writeFile
+      if (options.output) {
+        fs.writeFile(options.output, responseJson, (writeErr) => {
+          if (writeErr) {
+            res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+            return res.end(JSON.stringify({ error: 'Помилка запису у файл' }));
+          }
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+          res.end(responseJson);
+        });
+      } else {
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(responseJson);
+      }
+    }); // кінець fs.readFile
+  }); // кінець http.createServer
+
+  // Запуск прослуховування сервера
   server.listen(options.port, options.host, () => {
     console.log(`Сервер працює: http://${options.host}:${options.port}`);
   });
-}
+} // кінець startServer
